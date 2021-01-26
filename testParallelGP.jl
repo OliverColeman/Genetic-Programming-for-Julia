@@ -1,3 +1,8 @@
+##### THIS IS NOT CURRENTLY WORKING, the multiple island code needs updating in GeneticProgramming #####
+
+using Distributed
+using Statistics
+
 #@everywhere using LsqFit
 if nprocs() == 1
     addprocs(19)
@@ -6,11 +11,12 @@ end
 @everywhere include("GeneticProgramming.jl")
 
 # define input data
-@everywhere X = collect(linspace(0,2*pi,50));
+@everywhere X = collect(range(0, step=2*pi, stop=50));
 # define output data that we will attempt to reproduce.
 # Since Y is used in the fitness funct, not defined in
 # the library, we need to initialize Y on all procs.
-@everywhere Y = (X-1).*sin(2*X);
+@everywhere Y = similar(X)
+@everywhere @. Y = (X-1)*sin(2*X);
 
 # create a library of nodes that we can use to build
 # syntax trees. Deciding which functions and terminals
@@ -32,7 +38,7 @@ library.addFunction(cos,1)
 # define a fitness function. In this case, we will
 # use RMSE. 
 fitFunct = function(treeOutput)
-    sqrt(mean((treeOutput-Y).^2))
+    sqrt(mean((treeOutput .- Y) .^ 2))
 end
 
 # Initialize the GP to run in parallel. The vars dictionary defines 

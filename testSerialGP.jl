@@ -1,8 +1,16 @@
+using Distributed
+using Statistics
+
+addprocs(1)
+
 include("GeneticProgramming.jl")
+
 # define input data
-X = collect(linspace(0,2*pi,50));
+X = collect(range(0, step=2*pi, stop=50));
 # define output data that we will attempt to reproduce
-Y = (X-1).*sin(2*X);
+Y = similar(X)
+@. Y = (X-1)*sin(2*X);
+
 # create a library of nodes that we can use to build
 # syntax trees. Deciding which functions and terminals
 # to include is problem dependent.
@@ -23,7 +31,7 @@ lib.addFunction(cos,1)
 # define a fitness function. In this case, we will
 # use RMSE. 
 fitFunct = function(treeOutput)
-    sqrt(mean((treeOutput-Y).^2))
+    sqrt(mean((treeOutput .- Y) .^ 2))
 end
 
 # Initialize the GP to run in serial. The vars dictionary defines 
@@ -43,7 +51,7 @@ println("Run Complete.")
 G.plotParetoFront()
 println("Plotting pareto front. Need to close plot to proceed.")
 show()
-println("Here are the best solutions from this run:")
+println("Here are the best solutions from this run ($(length(G.globalParetoFront))):")
 for tree in G.globalParetoFront
     println(tree.toString())
 end

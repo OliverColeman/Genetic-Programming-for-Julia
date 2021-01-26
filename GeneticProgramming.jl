@@ -1,9 +1,10 @@
 #module GeneticProgramming
+using Distributed
 using PyPlot
 using Interact
 
 
-type gpLibrary
+mutable struct gpLibrary
     terminals::Array{Any,1}
     functions::Array{Function,1}
     numInputs::Array{Int64,1}
@@ -53,7 +54,7 @@ type gpLibrary
 end
 
 
-type Tree
+mutable struct Tree
     root
     depth::Int
     age::Int
@@ -144,7 +145,7 @@ type Tree
             currentNodes = Tuple[]
             push!(currentNodes,(this.root,1))
             while length(currentNodes) > 0
-                node,depthOfChildren = shift!(currentNodes)
+                node, depthOfChildren = popfirst!(currentNodes)
                 if depthOfChildren > this.depth
                     this.depth = depthOfChildren
                 end
@@ -169,7 +170,7 @@ type Tree
         end
         
         this.eval = function()
-            return eval(this.root)
+            return eval(@.(this.root))
         end
         
         this.toString = function()
@@ -237,7 +238,7 @@ type Tree
 end
 
 
-type Population
+mutable struct Population
     forest::Array{Tree,1}
     popSize::Int
     babyPopSize::Int
@@ -277,12 +278,15 @@ type Population
                     if currentTree.depth > this.maxDepth
                         currentTree.fitness = Inf
                     elseif currentTree.fitness == -1
-                        currentTree.fitness = this.fitnessFunction(currentTree.eval())
+                        out = currentTree.eval()
+                        currentTree.fitness = this.fitnessFunction(out)
                     end
-                catch
+                catch e
+                    #println("tree eval error ", e)
                     # Flag tree for removal if errors.
                     currentTree.fitness = Inf
                 end
+            
                 # Not a candidate for pareto front if flagged for removal
                 if !isnan(currentTree.fitness) && currentTree.fitness < Inf
                     if length(this.paretoFront) == 0
@@ -523,7 +527,7 @@ type Population
 end
 
 
-type GP
+mutable struct GP
     islandCount::Int
     islands::Array{Any,1}
     popSize::Int
@@ -885,7 +889,7 @@ type GP
                         Z = Z*ones(length(input))
                     end
                     plot(input,Z,"r-",label="Solution")
-                    title(@sprintf "%s,\n Fitness=%0.3f, Depth=%d, #Nodes=%d" tree.toString() tree.fitness tree.depth tree.numNodes)
+                    title("$(tree.toString()),\n Fitness=$(tree.fitness), Depth=$(tree.depth), #Nodes=$(tree.numNodes)")
                     legend()
                 end
             end
